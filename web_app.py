@@ -62,12 +62,61 @@ async def home(request: Request):
 async def get_available_models():
     """Get list of available Ollama models"""
     try:
-        models = ollama.list()
-        model_names = [model['name'] for model in models['models']]
-        if not model_names:
-            logger.warning("No models found in Ollama")
+        # Get models from Ollama
+        models_response = ollama.list()
+        
+        # Check if we got a valid response
+        if not models_response:
             return {"models": [], "error": "No models found. Please install models with 'ollama pull model-name'"}
-        return {"models": model_names}
+        
+        # Handle Pydantic response object - it has a 'models' attribute
+        if hasattr(models_response, 'models'):
+            models_array = models_response.models
+        elif isinstance(models_response, dict) and 'models' in models_response:
+            models_array = models_response['models']
+        else:
+            return {"models": [], "error": "No models found. Please install models with 'ollama pull model-name'"}
+        
+        model_list = []
+        
+        for model in models_array:
+            # Handle Pydantic model objects and dicts
+            if hasattr(model, 'model'):
+                # Pydantic object with 'model' attribute
+                name = model.model
+            elif isinstance(model, dict):
+                # Dictionary object
+                name = (model.get('model') or 
+                       model.get('name') or 
+                       model.get('id') or 
+                       'Unknown')
+            elif isinstance(model, str):
+                # String object
+                name = model
+            else:
+                continue
+            
+            model_info = {
+                "name": name,
+                "size": getattr(model, 'size', 0) if hasattr(model, 'size') else (model.get('size', 0) if isinstance(model, dict) else 0),
+                "modified_at": str(getattr(model, 'modified_at', '')) if hasattr(model, 'modified_at') else (model.get('modified_at', '') if isinstance(model, dict) else '')
+            }
+                
+            model_list.append(model_info)
+        
+        # Sort models alphabetically by name
+        model_list.sort(key=lambda x: x['name'])
+        
+        # Extract just the names for the frontend
+        model_names = [model['name'] for model in model_list if model['name'] != 'Unknown']
+        
+        if not model_names:
+            return {"models": [], "error": "No valid models found. Please install models with 'ollama pull model-name'"}
+        
+        return {
+            "models": model_names,
+            "model_details": model_list
+        }
     except Exception as e:
         error_msg = str(e)
         logger.error(f"Error getting models: {error_msg}")
