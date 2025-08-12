@@ -21,6 +21,15 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="AiTalkDual", description="AI Conversation Simulator")
 
+# Add CORS headers manually since fastapi.middleware.cors might not be available
+@app.middleware("http")
+async def add_cors_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    return response
+
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -55,10 +64,17 @@ async def get_available_models():
     try:
         models = ollama.list()
         model_names = [model['name'] for model in models['models']]
+        if not model_names:
+            logger.warning("No models found in Ollama")
+            return {"models": [], "error": "No models found. Please install models with 'ollama pull model-name'"}
         return {"models": model_names}
     except Exception as e:
-        logger.error(f"Error getting models: {e}")
-        return {"models": ["qwen2:1.5b", "llama3.2:1b"]}  # fallback
+        error_msg = str(e)
+        logger.error(f"Error getting models: {error_msg}")
+        if "connection" in error_msg.lower() or "refused" in error_msg.lower():
+            return {"models": [], "error": "Cannot connect to Ollama service. Please start Ollama with 'ollama serve'"}
+        else:
+            return {"models": [], "error": f"Ollama error: {error_msg}"}
 
 @app.post("/api/conversation/start")
 async def start_conversation(config: ConversationConfig):
@@ -93,12 +109,16 @@ async def start_conversation(config: ConversationConfig):
 @app.get("/api/conversation/{conversation_id}/stream")
 async def stream_conversation(conversation_id: str):
     """Stream the conversation using Server-Sent Events"""
+    logger.info(f"Starting stream for conversation {conversation_id}")
+    
     if conversation_id not in active_conversations:
+        logger.error(f"Conversation {conversation_id} not found")
         raise HTTPException(status_code=404, detail="Conversation not found")
     
     conversation = active_conversations[conversation_id]
     
     if conversation["is_running"]:
+        logger.warning(f"Conversation {conversation_id} already running")
         raise HTTPException(status_code=409, detail="Conversation already running")
     
     conversation["is_running"] = True
@@ -189,7 +209,12 @@ async def stream_conversation(conversation_id: str):
         finally:
             conversation["is_running"] = False
     
-    return StreamingResponse(generate_conversation(), media_type="text/plain")
+    return StreamingResponse(generate_conversation(), media_type="text/event-stream", headers={
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "Cache-Control"
+    })
 
 @app.delete("/api/conversation/{conversation_id}")
 async def stop_conversation(conversation_id: str):
@@ -215,4 +240,4 @@ async def get_conversation_status(conversation_id: str):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="127.0.0.1", port=8000)

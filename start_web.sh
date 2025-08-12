@@ -39,9 +39,9 @@ fi
 
 echo ""
 echo "🚀 Starting web server..."
-echo "Web interface will be available at: http://localhost:8000"
+echo "Web interface will be available at: http://127.0.0.1:8000"
 echo "Press Ctrl+C to stop the server"
 echo "=========================="
 
-# Start the web server
-python3 -m uvicorn web_app:app --host 0.0.0.0 --port 8000 --reload
+# Start the web server (using 127.0.0.1 for security and browser compatibility)
+python3 -m uvicorn web_app:app --host 127.0.0.1 --port 8000 --reload

@@ -62,31 +62,49 @@ class AiTalkDual {
             const response = await fetch('/api/models');
             const data = await response.json();
             
+            // Check for errors in the response
+            if (data.error) {
+                this.hideLoading();
+                this.showError(`Model loading error: ${data.error}`);
+                return;
+            }
+            
             // Clear existing options
             this.model1Select.innerHTML = '';
             this.model2Select.innerHTML = '';
             
-            // Add model options
-            data.models.forEach(model => {
-                const option1 = new Option(model, model);
-                const option2 = new Option(model, model);
-                this.model1Select.add(option1);
-                this.model2Select.add(option2);
-            });
-            
-            // Set default selections if available
-            if (data.models.includes('qwen2:1.5b')) {
-                this.model1Select.value = 'qwen2:1.5b';
-            }
-            if (data.models.includes('llama3.2:1b')) {
-                this.model2Select.value = 'llama3.2:1b';
+            if (data.models && data.models.length > 0) {
+                // Add model options
+                data.models.forEach(model => {
+                    const option1 = new Option(model, model);
+                    const option2 = new Option(model, model);
+                    this.model1Select.add(option1);
+                    this.model2Select.add(option2);
+                });
+                
+                // Set default selections if available
+                if (data.models.includes('qwen2:1.5b')) {
+                    this.model1Select.value = 'qwen2:1.5b';
+                }
+                if (data.models.includes('llama3.2:1b')) {
+                    this.model2Select.value = 'llama3.2:1b';
+                }
+            } else {
+                // No models available
+                const noModelsOption1 = new Option('No models available', '');
+                const noModelsOption2 = new Option('No models available', '');
+                noModelsOption1.disabled = true;
+                noModelsOption2.disabled = true;
+                this.model1Select.add(noModelsOption1);
+                this.model2Select.add(noModelsOption2);
+                this.showError('No models found. Please install models with: ollama pull model-name');
             }
             
             this.hideLoading();
         } catch (error) {
             console.error('Error loading models:', error);
             this.hideLoading();
-            this.showError('Failed to load models. Using defaults.');
+            this.showError(`Failed to load models: ${error.message}. Make sure the web server is running and Ollama is available.`);
         }
     }
 
@@ -154,8 +172,16 @@ class AiTalkDual {
     startEventStream() {
         if (!this.conversationId) return;
 
-        this.eventSource = new EventSource(`/api/conversation/${this.conversationId}/stream`);
+        // Use the current host instead of hardcoded address
+        const baseUrl = window.location.origin;
+        const streamUrl = `${baseUrl}/api/conversation/${this.conversationId}/stream`;
         
+        this.eventSource = new EventSource(streamUrl);
+        
+        this.eventSource.onopen = (event) => {
+            console.log('EventSource connection opened');
+        };
+
         this.eventSource.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
@@ -167,7 +193,14 @@ class AiTalkDual {
 
         this.eventSource.onerror = (error) => {
             console.error('EventSource error:', error);
-            this.showError('Connection error occurred');
+            console.log('EventSource readyState:', this.eventSource.readyState);
+            
+            // ReadyState: 0 = CONNECTING, 1 = OPEN, 2 = CLOSED
+            if (this.eventSource.readyState === EventSource.CLOSED) {
+                this.showError('Connection closed unexpectedly. Please try again.');
+            } else {
+                this.showError('Connection error occurred. Check console for details.');
+            }
             this.stopConversation();
         };
     }
