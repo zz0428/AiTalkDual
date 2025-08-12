@@ -1,6 +1,6 @@
 """
-AiTalkDual Web Interface
-A modern web UI for the AI conversation simulator using FastAPI and Server-Sent Events.
+Improved AiTalkDual Web Interface
+Each AI model gets its own private context and doesn't know it's talking to another AI
 """
 
 from fastapi import FastAPI, Request, HTTPException
@@ -19,7 +19,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="AiTalkDual", description="AI Conversation Simulator")
+app = FastAPI(title="AiTalkDual Improved", description="AI Conversation Simulator - Natural Conversations")
 
 # Add CORS headers manually since fastapi.middleware.cors might not be available
 @app.middleware("http")
@@ -39,10 +39,11 @@ templates = Jinja2Templates(directory="templates")
 # Store active conversations
 active_conversations: Dict[str, dict] = {}
 
-class ConversationConfig(BaseModel):
+class ImprovedConversationConfig(BaseModel):
     model1: str = "qwen2:1.5b"
     model2: str = "llama3.2:1b"
-    starting_prompt: str = "你好，我们来玩一个角色扮演游戏。你是一个经验丰富的宇航员，我是一个对太空充满好奇的高中生。请你先开始，向我介绍一下你第一次进入太空时的感受。"
+    model1_context: str = """You are an experienced astronaut who has just returned from a mission to the International Space Station. You're feeling excited and want to share your experiences with someone. Start by telling them about the most amazing moment during your recent space mission."""
+    model2_context: str = """You are a curious high school student who is fascinated by space and science. You just met someone who seems to have interesting stories about space. You're eager to learn and ask thoughtful questions about their experiences."""
     turns: int = 4
     typing_speed: float = 50.0  # chars per second
 
@@ -125,15 +126,33 @@ async def get_available_models():
         else:
             return {"models": [], "error": f"Ollama error: {error_msg}"}
 
+async def initialize_model_with_context(model_name: str, context: str):
+    """Initialize a model with its private context"""
+    messages = [{'role': 'system', 'content': context}]
+    
+    # Get the model's natural opening based on their context
+    response = ollama.chat(model=model_name, messages=messages)
+    opening_message = response['message']['content']
+    
+    # Update history to include the opening
+    messages.append({'role': 'assistant', 'content': opening_message})
+    
+    return messages, opening_message
+
 @app.post("/api/conversation/start")
-async def start_conversation(config: ConversationConfig):
-    """Start a new conversation"""
+async def start_conversation(config: ImprovedConversationConfig):
+    """Start a new conversation with improved context isolation"""
     conversation_id = str(uuid.uuid4())
     
     # Validate models exist
     try:
         available_models = ollama.list()
-        available_names = [model['name'] for model in available_models['models']]
+        if hasattr(available_models, 'models'):
+            available_names = [model.model if hasattr(model, 'model') else str(model) for model in available_models.models]
+        elif isinstance(available_models, dict) and 'models' in available_models:
+            available_names = [model['name'] if isinstance(model, dict) else str(model) for model in available_models['models']]
+        else:
+            available_names = []
         
         if config.model1 not in available_names:
             raise HTTPException(status_code=400, detail=f"Model {config.model1} not found")
@@ -149,16 +168,16 @@ async def start_conversation(config: ConversationConfig):
         "model1_messages": [],
         "model2_messages": [],
         "current_turn": 0,
-        "current_prompt": config.starting_prompt,
-        "is_running": False
+        "is_running": False,
+        "model1_opening": None
     }
     
     return {"conversation_id": conversation_id}
 
 @app.get("/api/conversation/{conversation_id}/stream")
 async def stream_conversation(conversation_id: str):
-    """Stream the conversation using Server-Sent Events"""
-    logger.info(f"Starting stream for conversation {conversation_id}")
+    """Stream the improved conversation using Server-Sent Events"""
+    logger.info(f"Starting improved stream for conversation {conversation_id}")
     
     if conversation_id not in active_conversations:
         logger.error(f"Conversation {conversation_id} not found")
@@ -172,69 +191,60 @@ async def stream_conversation(conversation_id: str):
     
     conversation["is_running"] = True
     
-    async def generate_conversation():
+    async def generate_improved_conversation():
         try:
-            config = ConversationConfig(**conversation["config"])
-            current_prompt = conversation["current_prompt"]
+            config = ImprovedConversationConfig(**conversation["config"])
             
-            yield f"data: {json.dumps({'type': 'start', 'message': 'Conversation started'})}\n\n"
+            yield f"data: {json.dumps({'type': 'start', 'message': 'Initializing models with private contexts...'})}\n\n"
             
+            # Initialize Model 1 with its private context
+            yield f"data: {json.dumps({'type': 'init', 'model': config.model1, 'message': 'Setting up private context...'})}\n\n"
+            model1_messages, model1_opening = await initialize_model_with_context(config.model1, config.model1_context)
+            conversation["model1_messages"] = model1_messages
+            conversation["model1_opening"] = model1_opening
+            
+            # Initialize Model 2 with its private context  
+            yield f"data: {json.dumps({'type': 'init', 'model': config.model2, 'message': 'Setting up private context...'})}\n\n"
+            model2_messages, _ = await initialize_model_with_context(config.model2, config.model2_context)
+            conversation["model2_messages"] = model2_messages
+            
+            yield f"data: {json.dumps({'type': 'contexts_ready', 'message': 'Both models ready with independent contexts'})}\n\n"
+            
+            # Start with Model 1's opening message
+            yield f"data: {json.dumps({'type': 'message_start', 'model': config.model1, 'turn': 1})}\n\n"
+            
+            # Stream Model 1's opening with typing effect
+            chunk_size = max(1, int(config.typing_speed / 10))
+            for i in range(0, len(model1_opening), chunk_size):
+                chunk = model1_opening[i:i+chunk_size]
+                yield f"data: {json.dumps({'type': 'message_chunk', 'content': chunk, 'model': config.model1})}\n\n"
+                await asyncio.sleep(chunk_size / config.typing_speed)
+            
+            yield f"data: {json.dumps({'type': 'message_end', 'model': config.model1})}\n\n"
+            
+            # This becomes the input for Model 2 (as if from a human)
+            current_prompt = model1_opening
+            
+            # Continue the conversation
             for turn in range(config.turns):
                 conversation["current_turn"] = turn + 1
-                
-                # Model 1's turn
-                yield f"data: {json.dumps({'type': 'thinking', 'model': config.model1, 'turn': turn + 1})}\n\n"
-                
-                try:
-                    # Add to model 1's history
-                    conversation["model1_messages"].append({'role': 'user', 'content': current_prompt})
-                    
-                    # Get response from model 1
-                    response_1 = ollama.chat(model=config.model1, messages=conversation["model1_messages"])
-                    response_1_content = response_1['message']['content']
-                    
-                    # Add model 1's response to its history
-                    conversation["model1_messages"].append({'role': 'assistant', 'content': response_1_content})
-                    
-                    # Stream the response with typing effect
-                    yield f"data: {json.dumps({'type': 'message_start', 'model': config.model1, 'turn': turn + 1})}\n\n"
-                    
-                    # Simulate typing by sending chunks
-                    chunk_size = max(1, int(config.typing_speed / 10))  # Adjust chunk size based on speed
-                    for i in range(0, len(response_1_content), chunk_size):
-                        chunk = response_1_content[i:i+chunk_size]
-                        yield f"data: {json.dumps({'type': 'message_chunk', 'content': chunk, 'model': config.model1})}\n\n"
-                        await asyncio.sleep(chunk_size / config.typing_speed)
-                    
-                    yield f"data: {json.dumps({'type': 'message_end', 'model': config.model1})}\n\n"
-                    
-                    current_prompt = response_1_content
-                    await asyncio.sleep(1)
-                    
-                except Exception as e:
-                    logger.error(f"Error with model 1: {e}")
-                    yield f"data: {json.dumps({'type': 'error', 'message': f'Error with {config.model1}: {str(e)}'})}\n\n"
-                    break
+                await asyncio.sleep(1)
                 
                 # Model 2's turn
                 yield f"data: {json.dumps({'type': 'thinking', 'model': config.model2, 'turn': turn + 1})}\n\n"
                 
                 try:
-                    # Add to model 2's history
+                    # Model 2 receives message as if from a human conversation partner
                     conversation["model2_messages"].append({'role': 'user', 'content': current_prompt})
                     
-                    # Get response from model 2
                     response_2 = ollama.chat(model=config.model2, messages=conversation["model2_messages"])
                     response_2_content = response_2['message']['content']
                     
-                    # Add model 2's response to its history
                     conversation["model2_messages"].append({'role': 'assistant', 'content': response_2_content})
                     
-                    # Stream the response with typing effect
+                    # Stream Model 2's response
                     yield f"data: {json.dumps({'type': 'message_start', 'model': config.model2, 'turn': turn + 1})}\n\n"
                     
-                    # Simulate typing by sending chunks
-                    chunk_size = max(1, int(config.typing_speed / 10))
                     for i in range(0, len(response_2_content), chunk_size):
                         chunk = response_2_content[i:i+chunk_size]
                         yield f"data: {json.dumps({'type': 'message_chunk', 'content': chunk, 'model': config.model2})}\n\n"
@@ -249,8 +259,39 @@ async def stream_conversation(conversation_id: str):
                     logger.error(f"Error with model 2: {e}")
                     yield f"data: {json.dumps({'type': 'error', 'message': f'Error with {config.model2}: {str(e)}'})}\n\n"
                     break
+                
+                if turn < config.turns - 1:  # Don't do Model 1's turn on the last iteration
+                    # Model 1's turn
+                    yield f"data: {json.dumps({'type': 'thinking', 'model': config.model1, 'turn': turn + 1})}\n\n"
+                    
+                    try:
+                        # Model 1 receives message as if from a human conversation partner
+                        conversation["model1_messages"].append({'role': 'user', 'content': current_prompt})
+                        
+                        response_1 = ollama.chat(model=config.model1, messages=conversation["model1_messages"])
+                        response_1_content = response_1['message']['content']
+                        
+                        conversation["model1_messages"].append({'role': 'assistant', 'content': response_1_content})
+                        
+                        # Stream Model 1's response
+                        yield f"data: {json.dumps({'type': 'message_start', 'model': config.model1, 'turn': turn + 2})}\n\n"
+                        
+                        for i in range(0, len(response_1_content), chunk_size):
+                            chunk = response_1_content[i:i+chunk_size]
+                            yield f"data: {json.dumps({'type': 'message_chunk', 'content': chunk, 'model': config.model1})}\n\n"
+                            await asyncio.sleep(chunk_size / config.typing_speed)
+                        
+                        yield f"data: {json.dumps({'type': 'message_end', 'model': config.model1})}\n\n"
+                        
+                        current_prompt = response_1_content
+                        await asyncio.sleep(1)
+                        
+                    except Exception as e:
+                        logger.error(f"Error with model 1: {e}")
+                        yield f"data: {json.dumps({'type': 'error', 'message': f'Error with {config.model1}: {str(e)}'})}\n\n"
+                        break
             
-            yield f"data: {json.dumps({'type': 'complete', 'message': 'Conversation completed'})}\n\n"
+            yield f"data: {json.dumps({'type': 'complete', 'message': 'Natural conversation completed - models never knew they were talking to AI!'})}\n\n"
             
         except Exception as e:
             logger.error(f"Conversation error: {e}")
@@ -258,7 +299,7 @@ async def stream_conversation(conversation_id: str):
         finally:
             conversation["is_running"] = False
     
-    return StreamingResponse(generate_conversation(), media_type="text/event-stream", headers={
+    return StreamingResponse(generate_improved_conversation(), media_type="text/event-stream", headers={
         "Cache-Control": "no-cache",
         "Connection": "keep-alive",
         "Access-Control-Allow-Origin": "*",

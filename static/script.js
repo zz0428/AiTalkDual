@@ -1,4 +1,4 @@
-// AiTalkDual Web Interface JavaScript
+// AiTalkDual Improved Web Interface JavaScript
 
 class AiTalkDual {
     constructor() {
@@ -18,7 +18,8 @@ class AiTalkDual {
         // Config elements
         this.model1Select = document.getElementById('model1');
         this.model2Select = document.getElementById('model2');
-        this.startingPromptTextarea = document.getElementById('startingPrompt');
+        this.model1ContextTextarea = document.getElementById('model1Context');
+        this.model2ContextTextarea = document.getElementById('model2Context');
         this.turnsInput = document.getElementById('turns');
         this.typingSpeedInput = document.getElementById('typingSpeed');
         this.speedValueSpan = document.getElementById('speedValue');
@@ -51,7 +52,8 @@ class AiTalkDual {
         });
 
         // Form validation
-        this.startingPromptTextarea.addEventListener('input', () => this.validateForm());
+        this.model1ContextTextarea.addEventListener('input', () => this.validateForm());
+        this.model2ContextTextarea.addEventListener('input', () => this.validateForm());
         this.model1Select.addEventListener('change', () => this.validateForm());
         this.model2Select.addEventListener('change', () => this.validateForm());
     }
@@ -189,9 +191,10 @@ class AiTalkDual {
     validateForm() {
         const model1 = this.model1Select.value;
         const model2 = this.model2Select.value;
-        const prompt = this.startingPromptTextarea.value.trim();
+        const model1Context = this.model1ContextTextarea.value.trim();
+        const model2Context = this.model2ContextTextarea.value.trim();
         
-        const isValid = model1 && model2 && prompt && !this.isRunning;
+        const isValid = model1 && model2 && model1Context && model2Context && !this.isRunning;
         this.startBtn.disabled = !isValid;
         
         if (model1 === model2) {
@@ -212,7 +215,8 @@ class AiTalkDual {
             const config = {
                 model1: this.model1Select.value,
                 model2: this.model2Select.value,
-                starting_prompt: this.startingPromptTextarea.value.trim(),
+                model1_context: this.model1ContextTextarea.value.trim(),
+                model2_context: this.model2ContextTextarea.value.trim(),
                 turns: parseInt(this.turnsInput.value),
                 typing_speed: parseFloat(this.typingSpeedInput.value)
             };
@@ -296,8 +300,16 @@ class AiTalkDual {
     handleStreamEvent(data) {
         switch (data.type) {
             case 'start':
-                this.updateStatus('Conversation started', 'active');
+                this.updateStatus('Initializing private contexts...', 'active');
                 this.showProgress();
+                break;
+
+            case 'init':
+                this.updateStatus(`Setting up ${data.model} private context...`, 'active');
+                break;
+
+            case 'contexts_ready':
+                this.updateStatus('Both models ready with independent contexts', 'active');
                 break;
 
             case 'thinking':
@@ -318,7 +330,7 @@ class AiTalkDual {
                 break;
 
             case 'complete':
-                this.updateStatus('Conversation completed');
+                this.updateStatus('Natural conversation completed - models never knew they were talking to AI!');
                 this.hideProgress();
                 this.isRunning = false;
                 this.updateControlButtons();

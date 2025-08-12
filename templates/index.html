@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AiTalkDual - AI Conversation Simulator</title>
+    <title>AiTalkDual - Natural AI Conversations</title>
     <link rel="stylesheet" href="/static/style.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
@@ -12,7 +12,7 @@
         <!-- Header -->
         <header class="header">
             <h1><i class="fas fa-robot"></i> AiTalkDual</h1>
-            <p>Watch AI models have conversations with each other</p>
+            <p>Natural AI conversations where models don't know they're talking to AI</p>
         </header>
 
         <!-- Configuration Panel -->
@@ -26,7 +26,7 @@
                         <option value="qwen2:1.5b">qwen2:1.5b</option>
                         <option value="llama3.2:1b">llama3.2:1b</option>
                     </select>
-                    <div class="model-icon">🤖</div>
+                    <div class="model-icon">👨‍🚀</div>
                 </div>
 
                 <div class="config-item">
@@ -35,13 +35,19 @@
                         <option value="llama3.2:1b">llama3.2:1b</option>
                         <option value="qwen2:1.5b">qwen2:1.5b</option>
                     </select>
-                    <div class="model-icon">🤖</div>
+                    <div class="model-icon">�‍🎓</div>
                 </div>
 
                 <div class="config-item full-width">
-                    <label for="startingPrompt">Starting Prompt:</label>
-                    <textarea id="startingPrompt" rows="3" 
-                        placeholder="Enter the initial conversation topic...">你好，我们来玩一个角色扮演游戏。你是一个经验丰富的宇航员，我是一个对太空充满好奇的高中生。请你先开始，向我介绍一下你第一次进入太空时的感受。</textarea>
+                    <label for="model1Context">Model 1 Private Context:</label>
+                    <textarea id="model1Context" rows="3" 
+                        placeholder="Private context that only Model 1 will see...">You are an experienced astronaut who has just returned from a mission to the International Space Station. You're feeling excited and want to share your experiences with someone. Start by telling them about the most amazing moment during your recent space mission.</textarea>
+                </div>
+
+                <div class="config-item full-width">
+                    <label for="model2Context">Model 2 Private Context:</label>
+                    <textarea id="model2Context" rows="3" 
+                        placeholder="Private context that only Model 2 will see...">You are a curious high school student who is fascinated by space and science. You just met someone who seems to have interesting stories about space. You're eager to learn and ask thoughtful questions about their experiences.</textarea>
                 </div>
 
                 <div class="config-item">
@@ -58,7 +64,7 @@
 
             <div class="control-buttons">
                 <button id="startBtn" class="btn btn-primary">
-                    <i class="fas fa-play"></i> Start Conversation
+                    <i class="fas fa-play"></i> Start Natural Conversation
                 </button>
                 <button id="stopBtn" class="btn btn-danger" style="display: none;">
                     <i class="fas fa-stop"></i> Stop
@@ -67,12 +73,17 @@
                     <i class="fas fa-trash"></i> Clear
                 </button>
             </div>
+
+            <div class="info-box">
+                <i class="fas fa-info-circle"></i>
+                <p><strong>Improved Approach:</strong> Each AI model gets its own private context and doesn't know it's talking to another AI. This creates more natural, authentic conversations!</p>
+            </div>
         </div>
 
         <!-- Chat Container -->
         <div class="chat-container" id="chatContainer">
             <div class="chat-header">
-                <h3><i class="fas fa-comments"></i> Conversation</h3>
+                <h3><i class="fas fa-comments"></i> Natural Conversation</h3>
                 <div class="conversation-status" id="conversationStatus">
                     Ready to start
                 </div>
@@ -81,7 +92,8 @@
             <div class="chat-messages" id="chatMessages">
                 <div class="welcome-message">
                     <i class="fas fa-robot"></i>
-                    <p>Configure your AI models and click "Start Conversation" to begin!</p>
+                    <p>Configure the private contexts for each AI model and click "Start Natural Conversation" to begin!</p>
+                    <small>Each model will only see their own context and won't know they're talking to another AI.</small>
                 </div>
             </div>
             
@@ -105,7 +117,7 @@
     <div class="loading-overlay" id="loadingOverlay" style="display: none;">
         <div class="loading-spinner">
             <i class="fas fa-robot fa-spin"></i>
-            <p>Loading models...</p>
+            <p>Initializing private contexts...</p>
         </div>
     </div>
 

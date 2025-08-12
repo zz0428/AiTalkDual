@@ -199,6 +199,35 @@ input[type="range"]::-webkit-slider-thumb {
     box-shadow: var(--shadow-lg);
 }
 
+/* Info Box */
+.info-box {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 20px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.info-box i {
+    color: var(--primary-color);
+    font-size: 1.2rem;
+    margin-top: 2px;
+}
+
+.info-box p {
+    margin: 0;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: var(--text-secondary);
+}
+
+.info-box strong {
+    color: var(--text-primary);
+}
+
 .btn:disabled {
     opacity: 0.6;
     cursor: not-allowed;
