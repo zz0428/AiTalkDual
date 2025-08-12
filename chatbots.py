@@ -4,8 +4,8 @@ import sys
 
 # --- 配置区 ---
 # 你可以在这里更换你已经下载好的任何模型
-MODEL_1_NAME = 'qwen2:7b'
-MODEL_2_NAME = 'deepseek-r1:latest'
+MODEL_1_NAME = 'qwen2:1.5b'
+MODEL_2_NAME = 'llama3.2:1b'
 
 # 对话的初始话题
 STARTING_PROMPT = "你好，我们来玩一个角色扮演游戏。你是一个经验丰富的宇航员，我是一个对太空充满好奇的高中生。请你先开始，向我介绍一下你第一次进入太空时的感受。"
@@ -14,7 +14,7 @@ STARTING_PROMPT = "你好，我们来玩一个角色扮演游戏。你是一个�
 CONVERSATION_TURNS = 4
 
 # 打字机效果的速度（秒/字符），数值越小速度越快
-TYPEWRITER_SPEED = 0.03 
+TYPEWRITER_SPEED = 0.05
 # --- 配置区结束 ---
 
 

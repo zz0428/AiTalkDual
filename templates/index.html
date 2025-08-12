@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AiTalkDual - AI Conversation Simulator</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1><i class="fas fa-robot"></i> AiTalkDual</h1>
+            <p>Watch AI models have conversations with each other</p>
+        </header>
+
+        <!-- Configuration Panel -->
+        <div class="config-panel" id="configPanel">
+            <h3><i class="fas fa-cog"></i> Configuration</h3>
+            
+            <div class="config-grid">
+                <div class="config-item">
+                    <label for="model1">Model 1:</label>
+                    <select id="model1" class="model-select">
+                        <option value="qwen2:1.5b">qwen2:1.5b</option>
+                        <option value="llama3.2:1b">llama3.2:1b</option>
+                    </select>
+                    <div class="model-icon">🤖</div>
+                </div>
+
+                <div class="config-item">
+                    <label for="model2">Model 2:</label>
+                    <select id="model2" class="model-select">
+                        <option value="llama3.2:1b">llama3.2:1b</option>
+                        <option value="qwen2:1.5b">qwen2:1.5b</option>
+                    </select>
+                    <div class="model-icon">🤖</div>
+                </div>
+
+                <div class="config-item full-width">
+                    <label for="startingPrompt">Starting Prompt:</label>
+                    <textarea id="startingPrompt" rows="3" 
+                        placeholder="Enter the initial conversation topic...">你好，我们来玩一个角色扮演游戏。你是一个经验丰富的宇航员，我是一个对太空充满好奇的高中生。请你先开始，向我介绍一下你第一次进入太空时的感受。</textarea>
+                </div>
+
+                <div class="config-item">
+                    <label for="turns">Conversation Turns:</label>
+                    <input type="number" id="turns" value="4" min="1" max="20">
+                </div>
+
+                <div class="config-item">
+                    <label for="typingSpeed">Typing Speed (chars/sec):</label>
+                    <input type="range" id="typingSpeed" min="10" max="200" value="50">
+                    <span id="speedValue">50</span>
+                </div>
+            </div>
+
+            <div class="control-buttons">
+                <button id="startBtn" class="btn btn-primary">
+                    <i class="fas fa-play"></i> Start Conversation
+                </button>
+                <button id="stopBtn" class="btn btn-danger" style="display: none;">
+                    <i class="fas fa-stop"></i> Stop
+                </button>
+                <button id="clearBtn" class="btn btn-secondary">
+                    <i class="fas fa-trash"></i> Clear
+                </button>
+            </div>
+        </div>
+
+        <!-- Chat Container -->
+        <div class="chat-container" id="chatContainer">
+            <div class="chat-header">
+                <h3><i class="fas fa-comments"></i> Conversation</h3>
+                <div class="conversation-status" id="conversationStatus">
+                    Ready to start
+                </div>
+            </div>
+            
+            <div class="chat-messages" id="chatMessages">
+                <div class="welcome-message">
+                    <i class="fas fa-robot"></i>
+                    <p>Configure your AI models and click "Start Conversation" to begin!</p>
+                </div>
+            </div>
+            
+            <div class="progress-bar" id="progressBar" style="display: none;">
+                <div class="progress-fill" id="progressFill"></div>
+                <span class="progress-text" id="progressText">Turn 1 of 4</span>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>
+                <i class="fas fa-heart"></i> 
+                Powered by <a href="https://ollama.ai" target="_blank">Ollama</a> 
+                | <a href="https://github.com/zz0428/AiTalkDual" target="_blank">GitHub</a>
+            </p>
+        </footer>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+        <div class="loading-spinner">
+            <i class="fas fa-robot fa-spin"></i>
+            <p>Loading models...</p>
+        </div>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
